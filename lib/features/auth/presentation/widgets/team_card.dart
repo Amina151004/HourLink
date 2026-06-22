@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
 import 'package:hourlink/features/auth/data/models/teams.dart';
 import 'package:hourlink/features/auth/presentation/widgets/meeting_row.dart';
+import 'package:hourlink/features/auth/presentation/widgets/see_all_meetings_button.dart';
 
 class TeamCard extends StatelessWidget {
   final Team team;
@@ -27,7 +28,6 @@ class TeamCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              // Avatar
               Container(
                 width: 50,
                 height: 50,
@@ -37,14 +37,8 @@ class TeamCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-
-              // Team name
               Text(team.name, style: AppTextStyles.body),
-
-              // ✅ Spacer au lieu de SizedBox(width: 30)
               const Spacer(),
-
-              // ✅ Badge sans largeur fixe
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -76,27 +70,18 @@ class TeamCard extends StatelessWidget {
               ),
             ),
           ),
-          // Dans team_card.dart, après le Expanded(ListView...)
+
           const SizedBox(height: 8),
+
+          // ✅ widget réutilisable — style compact pour la dashboard card
           Align(
             alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: () {
-                // navigation vers la page de tous les meetings de cette team
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'See all meetings',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right, size: 16),
-                ],
+            child: SeeAllMeetingsButton(
+              team: team,
+              textStyle: AppTextStyles.caption.copyWith(
+                color: AppColors.textDark,
               ),
+              iconSize: 16,
             ),
           ),
         ],

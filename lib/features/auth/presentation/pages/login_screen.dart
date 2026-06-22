@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
+import 'package:hourlink/features/auth/presentation/pages/how_to_use_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -49,7 +50,11 @@ class LoginScreen extends StatelessWidget {
                 // ── Google button ─────────────────────────────────────────────
                 OutlinedButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/home');
+                    // ✅ navigue vers l'onboarding "How To Use" après connexion
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HowToUseScreen()),
+                    );
                   },
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(

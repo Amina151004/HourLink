@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hourlink/features/auth/data/models/user.dart';
+import 'package:hourlink/features/auth/presentation/pages/edit_profile_screen.dart';
+import 'package:hourlink/features/auth/presentation/pages/settings_screen.dart';
 import 'package:hourlink/features/auth/presentation/widgets/profile_card_body.dart';
 import 'package:hourlink/features/auth/presentation/widgets/profile_screen_shell.dart';
 
@@ -14,11 +16,21 @@ class MyProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProfileScreenShell(
       headerRightIcon: Icons.settings_outlined,
-      onHeaderRightTap: () {},
+      onHeaderRightTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => SettingsScreen(user: user)),
+        );
+      },
       body: ProfileCardBody(
         user: user,
         topRightIcon: Icons.edit_outlined,
-        onTopRightTap: () {},
+        onTopRightTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => EditProfileScreen(user: user)),
+          );
+        },
       ),
     );
   }

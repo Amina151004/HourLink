@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
-import 'package:hourlink/core/theme/appTheme.dart';
 import 'package:hourlink/features/auth/data/models/meeting.dart';
 import 'package:hourlink/features/auth/data/models/teams.dart';
 import 'package:hourlink/features/auth/data/models/user.dart';
+import 'package:hourlink/features/auth/presentation/pages/edit_team_screen.dart';
 import 'package:hourlink/features/auth/presentation/pages/user_profile_screen.dart';
+import 'package:hourlink/features/auth/presentation/widgets/leave_team_dialog.dart';
 import 'package:hourlink/features/auth/presentation/widgets/meeting_row.dart';
+import 'package:hourlink/features/auth/presentation/widgets/see_all_meetings_button.dart';
+import 'package:hourlink/features/auth/presentation/widgets/success_dialog.dart';
+import 'package:hourlink/features/auth/presentation/widgets/team_more_options_menu.dart';
 
 class TeamProfileScreen extends StatefulWidget {
   final Team team;
@@ -21,6 +25,10 @@ class _TeamProfileScreenState extends State<TeamProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ remplace par l'uid réel de FirebaseAuth.instance.currentUser!.uid
+    const String currentUserId = '1';
+    final bool isOwner = widget.team.isOwnedBy(currentUserId);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
@@ -31,6 +39,8 @@ class _TeamProfileScreenState extends State<TeamProfileScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 60),
+
+                // ── Back + (3 dots if not owner / pencil if owner) ──────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -40,13 +50,50 @@ class _TeamProfileScreenState extends State<TeamProfileScreen> {
                         icon: const Icon(Icons.chevron_left, size: 28),
                         onPressed: () => Navigator.pop(context),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.more_vert, size: 24),
-                        onPressed: () {},
-                      ),
+                      if (isOwner)
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 22),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    EditTeamScreen(team: widget.team),
+                              ),
+                            );
+                          },
+                        )
+                      else
+                        TeamMoreOptionsMenu(
+                          onLeaveTeam: () {
+                            LeaveTeamDialog.show(
+                              context,
+                              teamName: widget.team.name,
+                              onConfirm: () {
+                                // ── Ici tu retireras l'utilisateur de Firestore plus tard ──
+                                // await teamRef.update({'members': FieldValue.arrayRemove([uid])});
+
+                                // ✅ réutilise SuccessDialog pour confirmer la sortie
+                                SuccessDialog.show(
+                                  context,
+                                  title: 'Left Team',
+                                  message:
+                                      'You have left "${widget.team.name}".',
+                                  onDone: () {
+                                    Navigator.pop(context); // ferme dialog
+                                    Navigator.pop(
+                                      context,
+                                    ); // retourne à MyTeamsScreen
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
                     ],
                   ),
                 ),
+
                 Container(
                   width: 110,
                   height: 110,
@@ -56,12 +103,15 @@ class _TeamProfileScreenState extends State<TeamProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // ── Name + bio ────────────────────────────────────────────
                 Text(widget.team.name, style: AppTextStyles.subheading),
                 const SizedBox(height: 6),
                 Text(
                   widget.team.bio ?? 'team bio ....',
                   style: AppTextStyles.date,
                 ),
+
                 const SizedBox(height: 24),
               ],
             ),
@@ -99,9 +149,10 @@ class _TeamProfileScreenState extends State<TeamProfileScreen> {
                   ),
                   Expanded(
                     child: _selectedTab == 0
-                        ? _MeetingsTab(meetings: widget.team.meetings)
+                        ? _MeetingsTab(team: widget.team)
                         : _MembersTab(
-                            members: widget.team.members, // ✅ List<User>
+                            members: widget.team.members,
+                            isOwner: isOwner,
                             onMemberTap: (user) {
                               Navigator.push(
                                 context,
@@ -109,6 +160,11 @@ class _TeamProfileScreenState extends State<TeamProfileScreen> {
                                   builder: (_) => UserProfileScreen(user: user),
                                 ),
                               );
+                            },
+                            onRemoveMember: (user) {
+                              setState(() {
+                                widget.team.members.remove(user);
+                              });
                             },
                           ),
                   ),
@@ -162,12 +218,14 @@ class _TabButton extends StatelessWidget {
 
 // ── Meetings tab ──────────────────────────────────────────────────────────────
 class _MeetingsTab extends StatelessWidget {
-  final List<Meeting> meetings;
+  final Team team;
 
-  const _MeetingsTab({required this.meetings});
+  const _MeetingsTab({required this.team});
 
   @override
   Widget build(BuildContext context) {
+    final meetings = team.meetings;
+
     return Padding(
       padding: const EdgeInsets.all(10),
       child: Column(
@@ -186,17 +244,7 @@ class _MeetingsTab extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.only(bottom: 40),
-            child: GestureDetector(
-              onTap: () {},
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('See all meetings', style: AppTextStyles.body),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right, size: 18),
-                ],
-              ),
-            ),
+            child: SeeAllMeetingsButton(team: team), // ✅ widget réutilisable
           ),
         ],
       ),
@@ -206,10 +254,17 @@ class _MeetingsTab extends StatelessWidget {
 
 // ── Members tab ───────────────────────────────────────────────────────────────
 class _MembersTab extends StatelessWidget {
-  final List<User> members; // ✅ List<User>
+  final List<User> members;
+  final bool isOwner;
   final void Function(User user) onMemberTap;
+  final void Function(User user) onRemoveMember;
 
-  const _MembersTab({required this.members, required this.onMemberTap});
+  const _MembersTab({
+    required this.members,
+    required this.isOwner,
+    required this.onMemberTap,
+    required this.onRemoveMember,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -253,14 +308,23 @@ class _MembersTab extends StatelessWidget {
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        size: 22,
-                        color: AppColors.textGrey,
-                      ),
-                      onPressed: () {},
-                    ),
+                    isOwner
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.person_remove_outlined,
+                              size: 22,
+                              color: Colors.redAccent,
+                            ),
+                            onPressed: () => onRemoveMember(user),
+                          )
+                        : IconButton(
+                            icon: const Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              size: 22,
+                              color: AppColors.textGrey,
+                            ),
+                            onPressed: () {},
+                          ),
                   ],
                 ),
               ),

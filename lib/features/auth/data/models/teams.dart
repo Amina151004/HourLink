@@ -7,12 +7,22 @@ class Team {
   final String? bio;
   final List<Meeting> meetings;
   final List<User> members;
+  final String ownerId;
 
   Team({
     required this.name,
     required this.memberCount,
     this.bio,
     required this.meetings,
-    List<User>? members, // ✅ nullable en paramètre
-  }) : members = members ?? []; // ✅ fallback vide dans l'initializer
+    List<User>? members,
+    required this.ownerId,
+  }) : members = members ?? [];
+
+  bool isOwnedBy(String currentUserId) => ownerId == currentUserId;
+
+  // ✅ true si l'utilisateur est owner OU dans la liste des membres
+  bool isActiveFor(String currentUserId) {
+    return ownerId == currentUserId ||
+        members.any((member) => member.id == currentUserId);
+  }
 }

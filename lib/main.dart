@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hourlink/features/auth/presentation/pages/Dashboard_screen.dart';
 import 'package:hourlink/features/auth/presentation/pages/login_screen.dart';
-import 'package:hourlink/features/auth/presentation/pages/main_scaffold.dart';
+import 'package:hourlink/features/auth/presentation/pages/splash_screen.dart';
 
 void main() {
   // Cache uniquement la navbar du bas
@@ -24,7 +23,7 @@ class Hourlink extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       //initialRoute: '/',
       //routes: {'/': (_) => const LoginScreen()},
-      home: const MainScaffold(),
+      home: const SplashScreen(),
       theme: ThemeData(
         appBarTheme: const AppBarTheme(
           systemOverlayStyle: SystemUiOverlayStyle(

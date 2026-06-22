@@ -39,6 +39,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         title: '',
         location: '',
         description: '',
+        id: '1',
       ),
     ),
   ];

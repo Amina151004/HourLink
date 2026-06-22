@@ -18,10 +18,34 @@ class UserProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // mock teams — à remplacer par Firestore plus tard
     final List<Team> allTeams = [
-      Team(name: 'Team1', memberCount: 5, bio: 'team bio ....', meetings: []),
-      Team(name: 'Team2', memberCount: 10, bio: 'team bio ....', meetings: []),
-      Team(name: 'Team3', memberCount: 7, bio: 'team bio ....', meetings: []),
-      Team(name: 'Team4', memberCount: 3, bio: 'team bio ....', meetings: []),
+      Team(
+        name: 'Team1',
+        memberCount: 5,
+        bio: 'team bio ....',
+        meetings: [],
+        ownerId: '1',
+      ),
+      Team(
+        name: 'Team2',
+        memberCount: 10,
+        bio: 'team bio ....',
+        meetings: [],
+        ownerId: '2',
+      ),
+      Team(
+        name: 'Team3',
+        memberCount: 7,
+        bio: 'team bio ....',
+        meetings: [],
+        ownerId: '3',
+      ),
+      Team(
+        name: 'Team4',
+        memberCount: 3,
+        bio: 'team bio ....',
+        meetings: [],
+        ownerId: '4',
+      ),
     ];
 
     return ProfileScreenShell(

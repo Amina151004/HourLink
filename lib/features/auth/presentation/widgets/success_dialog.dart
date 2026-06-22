@@ -38,54 +38,81 @@ class SuccessDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 30),
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AppColors.white, width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.12),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Check icon ───────────────────────────────────────────────
+            // ── Icon badge, ring in primary tone ─────────────────────────
             Container(
-              width: 60,
-              height: 60,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 255, 247, 239),
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.35),
+                  width: 1.5,
+                ),
+                color: AppColors.primary.withOpacity(0.08),
               ),
               child: const Icon(
                 Icons.check_rounded,
                 color: AppColors.primary,
-                size: 32,
+                size: 28,
               ),
             ),
-            const SizedBox(height: 16),
 
-            // ── Title ────────────────────────────────────────────────────
-            Text(title, style: AppTextStyles.subheading),
-            const SizedBox(height: 8),
+            const SizedBox(height: 18),
 
-            // ── Message ──────────────────────────────────────────────────
             Text(
-              message,
-              style: AppTextStyles.date,
+              title,
+              style: AppTextStyles.subheading,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 8),
 
-            // ── Button ───────────────────────────────────────────────────
+            Text(
+              message,
+              style: AppTextStyles.body.copyWith(color: AppColors.textGrey),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 26),
+
+            // ── Button: filled primary ──────────────────────────────────
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
+                  elevation: 0,
                   padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 onPressed: onDone,
-                child: Text(buttonLabel),
+                child: Text(
+                  buttonLabel,
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ],

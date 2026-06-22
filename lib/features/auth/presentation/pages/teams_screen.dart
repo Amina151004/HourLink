@@ -21,7 +21,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
 
   late final List<Team> _teams = [
     Team(
-      name: 'Team Name',
+      name: 'Team first',
       memberCount: 5,
       bio: 'team bio ....',
       meetings: [
@@ -41,6 +41,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
           description: 'Write your informations here........',
           email: 'amina@gmail.com',
           phone: '0550-23-23-34',
+          id: '3',
         ),
         User(
           name: 'Karim D.',
@@ -49,6 +50,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
           description: 'Write your informations here........',
           email: 'karim@gmail.com',
           phone: '0660-11-22-33',
+          id: '2',
         ),
         User(
           name: 'Sara M.',
@@ -57,8 +59,10 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
           description: 'Write your informations here........',
           email: 'sara@gmail.com',
           phone: '0770-44-55-66',
+          id: '3',
         ),
       ],
+      ownerId: '1',
     ),
     Team(
       name: 'Team2',
@@ -73,6 +77,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
           description: 'Write your informations here........',
           email: 'yacine@gmail.com',
           phone: '0550-99-88-77',
+          id: '3',
         ),
         User(
           name: 'Nadia K.',
@@ -81,8 +86,10 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
           description: 'Write your informations here........',
           email: 'nadia@gmail.com',
           phone: '0660-33-44-55',
+          id: '2',
         ),
       ],
+      ownerId: '2',
     ),
     Team(
       name: 'Team3',
@@ -97,8 +104,10 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
           description: 'Write your informations here........',
           email: 'omar@gmail.com',
           phone: '0770-12-34-56',
+          id: '3',
         ),
       ],
+      ownerId: '3',
     ),
     Team(
       name: 'Team4',
@@ -113,8 +122,10 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
           description: 'Write your informations here........',
           email: 'lina@gmail.com',
           phone: '0550-65-43-21',
+          id: '4',
         ),
       ],
+      ownerId: '4',
     ),
   ];
 
@@ -205,6 +216,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                   },
                 ),
               ),
+            const SizedBox(height: 30),
           ],
         ),
       ),
