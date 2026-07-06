@@ -1,7 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
-import 'package:hourlink/features/auth/data/models/user.dart';
+import 'package:hourlink/features/auth/data/models/app_user.dart';
 import 'package:hourlink/features/auth/presentation/pages/Dashboard_screen.dart';
 import 'package:hourlink/features/auth/presentation/pages/chats_screen.dart';
 import 'package:hourlink/features/auth/presentation/pages/my_profile_screen.dart';
@@ -27,34 +28,35 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
-  final List<Widget> _pages = [
-    const MyDashboard(),
-    const MyTeamsScreen(),
-    const ChatsScreen(),
-    MyProfileScreen(
-      user: User(
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        phone: '+1234567890',
-        title: '',
-        location: '',
-        description: '',
-        id: '1',
-      ),
-    ),
-  ];
+  // ── Convert Firebase User → your AppUser model ────────────────────────
+  AppUser get _currentAppUser {
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    return AppUser(
+      id: firebaseUser?.uid ?? '',
+      name: firebaseUser?.displayName ?? '',
+      email: firebaseUser?.email ?? '',
+      photoUrl: firebaseUser?.photoURL ?? '',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // ── Build pages here so _currentAppUser is accessible ─────────────
+    final List<Widget> pages = [
+      MyDashboard(currentUser: _currentAppUser),
+      MyTeamsScreen(currentUser: _currentAppUser),
+      ChatsScreen(currentUserId: _currentAppUser.id),
+      MyProfileScreen(user: _currentAppUser),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      // ── Plus de bottomNavigationBar ici ───────────────────────────────
       body: Stack(
         children: [
-          // ── Page active (prend tout l'écran) ──────────────────────────
-          _pages[_currentIndex],
+          // ── Active page ───────────────────────────────────────────────
+          pages[_currentIndex],
 
-          // ── Navbar flottante en bas ────────────────────────────────────
+          // ── Floating bottom nav ───────────────────────────────────────
           Positioned(
             left: 0,
             right: 0,

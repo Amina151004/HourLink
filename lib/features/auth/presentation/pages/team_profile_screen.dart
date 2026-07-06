@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
-import 'package:hourlink/features/auth/data/models/meeting.dart';
 import 'package:hourlink/features/auth/data/models/teams.dart';
-import 'package:hourlink/features/auth/data/models/user.dart';
+import 'package:hourlink/features/auth/data/models/app_user.dart';
+import 'package:hourlink/features/auth/data/services/team_service.dart';
 import 'package:hourlink/features/auth/presentation/pages/edit_team_screen.dart';
 import 'package:hourlink/features/auth/presentation/pages/user_profile_screen.dart';
 import 'package:hourlink/features/auth/presentation/widgets/leave_team_dialog.dart';
@@ -13,52 +13,89 @@ import 'package:hourlink/features/auth/presentation/widgets/team_more_options_me
 
 class TeamProfileScreen extends StatefulWidget {
   final Team team;
+  final String currentUserId;
 
-  const TeamProfileScreen({super.key, required this.team});
+  const TeamProfileScreen({
+    super.key,
+    required this.team,
+    required this.currentUserId,
+  });
 
   @override
   State<TeamProfileScreen> createState() => _TeamProfileScreenState();
 }
 
 class _TeamProfileScreenState extends State<TeamProfileScreen> {
+  final TeamService _teamService = TeamService();
   int _selectedTab = 0;
+  Team? __team;
+  Team get _team => __team ?? widget.team;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTeam();
+  }
+
+  void _loadTeam() {
+    _teamService.getUserTeamsStream().listen((teams) {
+      final updated = teams.where((t) => t.id == widget.team.id).firstOrNull;
+      if (updated != null && mounted) {
+        setState(() => __team = updated);
+      }
+    });
+  }
+
+  Future<void> _leaveTeam() async {
+    await _teamService.leaveTeam(_team.id);
+  }
+
+  Future<void> _removeMember(AppUser user) async {
+    await _teamService.removeMember(teamId: _team.id, userId: user.id);
+    if (mounted) {
+      setState(() => _team.members.remove(user));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ remplace par l'uid réel de FirebaseAuth.instance.currentUser!.uid
-    const String currentUserId = '1';
-    final bool isOwner = widget.team.isOwnedBy(currentUserId);
+    final bool isOwner = _team.isOwnedBy(widget.currentUserId);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // ── Header zone ────────────────────────────────────────────────
           Container(
             color: AppColors.background,
             child: Column(
               children: [
                 const SizedBox(height: 60),
 
-                // ── Back + (3 dots if not owner / pencil if owner) ──────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.chevron_left, size: 28),
+                        icon: Icon(
+                          Icons.chevron_left,
+                          color: AppColors.textDark,
+                          size: 28,
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                       if (isOwner)
                         IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 22),
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            color: AppColors.textDark,
+                            size: 22,
+                          ),
                           onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    EditTeamScreen(team: widget.team),
+                                builder: (_) => EditTeamScreen(team: _team),
                               ),
                             );
                           },
@@ -68,22 +105,17 @@ class _TeamProfileScreenState extends State<TeamProfileScreen> {
                           onLeaveTeam: () {
                             LeaveTeamDialog.show(
                               context,
-                              teamName: widget.team.name,
-                              onConfirm: () {
-                                // ── Ici tu retireras l'utilisateur de Firestore plus tard ──
-                                // await teamRef.update({'members': FieldValue.arrayRemove([uid])});
-
-                                // ✅ réutilise SuccessDialog pour confirmer la sortie
+                              teamName: _team.name,
+                              onConfirm: () async {
+                                await _leaveTeam();
+                                if (!context.mounted) return;
                                 SuccessDialog.show(
                                   context,
                                   title: 'Left Team',
-                                  message:
-                                      'You have left "${widget.team.name}".',
+                                  message: 'You have left "${_team.name}".',
                                   onDone: () {
-                                    Navigator.pop(context); // ferme dialog
-                                    Navigator.pop(
-                                      context,
-                                    ); // retourne à MyTeamsScreen
+                                    Navigator.pop(context);
+                                    Navigator.pop(context);
                                   },
                                 );
                               },
@@ -98,26 +130,40 @@ class _TeamProfileScreenState extends State<TeamProfileScreen> {
                   width: 110,
                   height: 110,
                   decoration: BoxDecoration(
-                    color: AppColors.avatarPlaceholder,
+                    color: AppColors.avatarPast,
                     shape: BoxShape.circle,
+                    image: _team.photoUrl != null && _team.photoUrl!.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(_team.photoUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
+                  child: _team.photoUrl == null || _team.photoUrl!.isEmpty
+                      ? Center(
+                          child: Text(
+                            _team.name.isNotEmpty
+                                ? _team.name[0].toUpperCase()
+                                : '?',
+                            style: AppTextStyles.heading.copyWith(
+                              color: AppColors.textDark,
+                              fontSize: 30,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 16),
 
-                // ── Name + bio ────────────────────────────────────────────
-                Text(widget.team.name, style: AppTextStyles.subheading),
+                Text(_team.name, style: AppTextStyles.subheading),
                 const SizedBox(height: 6),
-                Text(
-                  widget.team.bio ?? 'team bio ....',
-                  style: AppTextStyles.date,
-                ),
+                Text(_team.bio, style: AppTextStyles.date),
 
                 const SizedBox(height: 24),
               ],
             ),
           ),
 
-          // ── White card with tabs ───────────────────────────────────────
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -149,23 +195,22 @@ class _TeamProfileScreenState extends State<TeamProfileScreen> {
                   ),
                   Expanded(
                     child: _selectedTab == 0
-                        ? _MeetingsTab(team: widget.team)
+                        ? _MeetingsTab(team: _team)
                         : _MembersTab(
-                            members: widget.team.members,
+                            members: _team.members,
                             isOwner: isOwner,
                             onMemberTap: (user) {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => UserProfileScreen(user: user),
+                                  builder: (_) => UserProfileScreen(
+                                    user: user,
+                                    currentUserId: widget.currentUserId,
+                                  ),
                                 ),
                               );
                             },
-                            onRemoveMember: (user) {
-                              setState(() {
-                                widget.team.members.remove(user);
-                              });
-                            },
+                            onRemoveMember: _removeMember,
                           ),
                   ),
                 ],
@@ -236,7 +281,7 @@ class _MeetingsTab extends StatelessWidget {
               itemCount: meetings.length,
               itemBuilder: (context, index) => MeetingRow(
                 title: meetings[index].title,
-                time: meetings[index].time,
+                time: meetings[index].formattedTime,
                 platform: meetings[index].platform,
                 showBadge: meetings[index].showBadge,
               ),
@@ -244,7 +289,7 @@ class _MeetingsTab extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.only(bottom: 40),
-            child: SeeAllMeetingsButton(team: team), // ✅ widget réutilisable
+            child: SeeAllMeetingsButton(team: team),
           ),
         ],
       ),
@@ -254,10 +299,10 @@ class _MeetingsTab extends StatelessWidget {
 
 // ── Members tab ───────────────────────────────────────────────────────────────
 class _MembersTab extends StatelessWidget {
-  final List<User> members;
+  final List<AppUser> members;
   final bool isOwner;
-  final void Function(User user) onMemberTap;
-  final void Function(User user) onRemoveMember;
+  final void Function(AppUser user) onMemberTap;
+  final void Function(AppUser user) onRemoveMember;
 
   const _MembersTab({
     required this.members,
@@ -290,7 +335,26 @@ class _MembersTab extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.avatarPlaceholder,
                         shape: BoxShape.circle,
+                        image: user.photoUrl.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(user.photoUrl),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
+                      child: user.photoUrl.isEmpty
+                          ? Center(
+                              child: Text(
+                                user.name.isNotEmpty
+                                    ? user.name[0].toUpperCase()
+                                    : '?',
+                                style: AppTextStyles.body.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -318,7 +382,7 @@ class _MembersTab extends StatelessWidget {
                             onPressed: () => onRemoveMember(user),
                           )
                         : IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.chat_bubble_outline_rounded,
                               size: 22,
                               color: AppColors.textGrey,
@@ -328,7 +392,7 @@ class _MembersTab extends StatelessWidget {
                   ],
                 ),
               ),
-              const Divider(
+              Divider(
                 height: 1,
                 color: AppColors.divider,
                 indent: 25,

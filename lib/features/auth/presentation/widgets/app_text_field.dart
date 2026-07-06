@@ -6,14 +6,16 @@ class AppTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final int maxLines;
-  final String? Function(String?) validator;
+  final String? Function(String?)? validator;
+  final void Function(String)? onChanged;
 
   const AppTextField({
     super.key,
     required this.controller,
     required this.hint,
-    required this.validator,
+    this.validator,
     this.maxLines = 1,
+    this.onChanged,
   });
 
   @override
@@ -23,6 +25,7 @@ class AppTextField extends StatelessWidget {
       maxLines: maxLines,
       style: AppTextStyles.body,
       cursorColor: AppColors.primary,
+      onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: AppTextStyles.caption.copyWith(fontSize: 13),
@@ -34,19 +37,19 @@ class AppTextField extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: AppColors.textDark, width: 0.5),
+          borderSide: BorderSide(color: AppColors.textDark, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: Colors.red, width: 1),
+          borderSide: BorderSide(color: Colors.red, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          borderSide: BorderSide(color: Colors.red, width: 1.5),
         ),
       ),
       validator: validator,

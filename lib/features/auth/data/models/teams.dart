@@ -1,28 +1,72 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hourlink/features/auth/data/models/meeting.dart';
-import 'package:hourlink/features/auth/data/models/user.dart';
+import 'package:hourlink/features/auth/data/models/app_user.dart';
 
 class Team {
+  final String id;
   final String name;
-  final int memberCount;
-  final String? bio;
-  final List<Meeting> meetings;
-  final List<User> members;
-  final String ownerId;
+  final String bio;
+  final String? photoUrl;
+  final String createdBy;
+  final List<String> memberIds; // ← just UIDs stored in Firestore
+  final List<AppUser> members; // ← full objects loaded separately
+  final List<Meeting> meetings; // ← loaded from subcollection
+  final DateTime? createdAt;
 
   Team({
+    required this.id,
     required this.name,
-    required this.memberCount,
-    this.bio,
-    required this.meetings,
-    List<User>? members,
-    required this.ownerId,
-  }) : members = members ?? [];
+    this.bio = '',
+    this.photoUrl,
+    required this.createdBy,
+    this.memberIds = const [],
+    this.members = const [],
+    this.meetings = const [],
+    this.createdAt,
+  });
 
-  bool isOwnedBy(String currentUserId) => ownerId == currentUserId;
+  int get memberCount => memberIds.length;
 
-  // ✅ true si l'utilisateur est owner OU dans la liste des membres
-  bool isActiveFor(String currentUserId) {
-    return ownerId == currentUserId ||
-        members.any((member) => member.id == currentUserId);
+  bool isOwnedBy(String userId) => createdBy == userId;
+
+  bool isActiveFor(String userId) =>
+      createdBy == userId || memberIds.contains(userId);
+
+  factory Team.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Team(
+      id: doc.id,
+      name: data['name'] ?? '',
+      bio: data['bio'] ?? '',
+      photoUrl: data['photoUrl'],
+      createdBy: data['createdBy'] ?? '',
+      memberIds: List<String>.from(data['memberIds'] ?? []), // ← corrigé
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'name': name,
+      'bio': bio,
+      'photoUrl': photoUrl,
+      'createdBy': createdBy,
+      'memberIds': memberIds, // ← corrigé
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+  }
+
+  Team copyWith({List<AppUser>? members, List<Meeting>? meetings}) {
+    return Team(
+      id: id,
+      name: name,
+      bio: bio,
+      photoUrl: photoUrl,
+      createdBy: createdBy,
+      memberIds: memberIds,
+      members: members ?? this.members,
+      meetings: meetings ?? this.meetings,
+      createdAt: createdAt,
+    );
   }
 }

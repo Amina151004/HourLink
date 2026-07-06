@@ -12,3 +12,8 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Firebase - fichiers sensibles
+google-services.json
+GoogleService-Info.plist
+lib/firebase_options.dart

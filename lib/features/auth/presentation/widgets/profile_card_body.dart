@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
-import 'package:hourlink/features/auth/data/models/user.dart';
+import 'package:hourlink/features/auth/data/models/app_user.dart';
 
 /// Shared body of the white profile card: top action icon (chat or edit),
 /// name/title/location, description block, and contact infos.
 /// Used by both [UserProfileScreen] (viewing a member) and
 /// [MyProfileScreen] (viewing/editing your own profile).
 class ProfileCardBody extends StatelessWidget {
-  final User user;
+  final AppUser user;
   final IconData topRightIcon;
-  final VoidCallback onTopRightTap;
+  final VoidCallback? onTopRightTap;
 
   const ProfileCardBody({
     super.key,
@@ -45,18 +45,24 @@ class ProfileCardBody extends StatelessWidget {
               children: [
                 Text(user.name, style: AppTextStyles.subheading),
                 const SizedBox(height: 4),
-                Text(user.title, style: AppTextStyles.date),
+                Text(
+                  user.title,
+                  style: AppTextStyles.date.copyWith(fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.location_on_outlined,
                       size: 16,
                       color: AppColors.textGrey,
                     ),
                     const SizedBox(width: 4),
-                    Text(user.location, style: AppTextStyles.date),
+                    Text(
+                      user.location,
+                      style: AppTextStyles.date.copyWith(fontSize: 11),
+                    ),
                   ],
                 ),
               ],
@@ -80,7 +86,7 @@ class ProfileCardBody extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.work_outline_rounded,
                       size: 20,
                       color: AppColors.textDark,
@@ -88,7 +94,7 @@ class ProfileCardBody extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(user.description, style: AppTextStyles.date),
+                Text(user.description, style: AppTextStyles.label),
               ],
             ),
           ),

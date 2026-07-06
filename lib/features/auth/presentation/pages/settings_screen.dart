@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
-import 'package:hourlink/features/auth/data/models/user.dart';
+import 'package:hourlink/features/auth/data/models/app_user.dart';
+import 'package:hourlink/features/auth/data/services/auth_service.dart';
 import 'package:hourlink/features/auth/presentation/pages/edit_profile_screen.dart';
+import 'package:hourlink/features/auth/presentation/pages/help_center_screen.dart';
+import 'package:hourlink/features/auth/presentation/pages/privacy_policy_screen.dart';
+import 'package:hourlink/features/auth/presentation/pages/about_screen.dart';
+import 'package:hourlink/core/utils/calendar_launcher.dart';
 
 class SettingsScreen extends StatelessWidget {
-  final User user; // ✅ ajouté — nécessaire pour passer à EditProfileScreen
+  final AppUser user;
 
   const SettingsScreen({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final authService = AuthService();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -25,7 +31,11 @@ class SettingsScreen extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.chevron_left, size: 28),
+                  icon: Icon(
+                    Icons.chevron_left,
+                    size: 28,
+                    color: AppColors.textDark,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
                 Text('Settings', style: AppTextStyles.subheading),
@@ -52,9 +62,7 @@ class SettingsScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => EditProfileScreen(
-                                user: user,
-                              ), // ✅ user défini maintenant
+                              builder: (_) => EditProfileScreen(user: user),
                             ),
                           );
                         },
@@ -62,7 +70,7 @@ class SettingsScreen extends StatelessWidget {
                       _SettingsTile(
                         icon: Icons.calendar_today_outlined,
                         label: 'Google Calendar',
-                        onTap: () {},
+                        onTap: () => openGoogleCalendar(context),
                       ),
                     ],
                   ),
@@ -78,11 +86,17 @@ class SettingsScreen extends StatelessWidget {
                         value: true,
                         onChanged: (_) {},
                       ),
-                      _SettingsToggleTile(
-                        icon: Icons.dark_mode_outlined,
-                        label: 'Dark Mode',
-                        value: false,
-                        onChanged: (_) {},
+                      // ── Dark Mode toggle, wired to isDarkModeNotifier ──
+                      ValueListenableBuilder<bool>(
+                        valueListenable: isDarkModeNotifier,
+                        builder: (context, isDark, _) {
+                          return _SettingsToggleTile(
+                            icon: Icons.dark_mode_outlined,
+                            label: 'Dark Mode',
+                            value: isDark,
+                            onChanged: (value) => AppTheme.setDark(value),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -95,17 +109,38 @@ class SettingsScreen extends StatelessWidget {
                       _SettingsTile(
                         icon: Icons.help_outline_rounded,
                         label: 'Help Center',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const HelpCenterScreen(),
+                            ),
+                          );
+                        },
                       ),
                       _SettingsTile(
                         icon: Icons.privacy_tip_outlined,
                         label: 'Privacy Policy',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PrivacyPolicyScreen(),
+                            ),
+                          );
+                        },
                       ),
                       _SettingsTile(
                         icon: Icons.info_outline_rounded,
                         label: 'About HourLink',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AboutScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -120,7 +155,10 @@ class SettingsScreen extends StatelessWidget {
                         label: 'Log Out',
                         labelColor: Colors.redAccent,
                         iconColor: Colors.redAccent,
-                        onTap: () {},
+                        onTap: () {
+                          authService.signOut();
+                          Navigator.pushReplacementNamed(context, '/');
+                        },
                       ),
                     ],
                   ),
@@ -176,7 +214,7 @@ class _SettingsGroup extends StatelessWidget {
           for (int i = 0; i < children.length; i++) ...[
             children[i],
             if (i != children.length - 1)
-              const Divider(height: 1, color: AppColors.divider, indent: 56),
+              Divider(height: 1, color: AppColors.divider, indent: 56),
           ],
         ],
       ),
@@ -256,7 +294,7 @@ class _SettingsToggleTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.white,
+            activeThumbColor: AppColors.white,
             activeTrackColor: AppColors.textDark,
           ),
         ],

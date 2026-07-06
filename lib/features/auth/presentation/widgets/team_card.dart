@@ -25,6 +25,7 @@ class TeamCard extends StatelessWidget {
       child: Column(
         children: [
           // ── Team header ────────────────────────────────────────────────
+          // ── Team header ────────────────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
@@ -32,9 +33,28 @@ class TeamCard extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: AppColors.avatarPlaceholder,
+                  color: AppColors.avatarPast,
                   shape: BoxShape.circle,
+                  image: team.photoUrl != null && team.photoUrl!.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(team.photoUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
+                child: team.photoUrl == null || team.photoUrl!.isEmpty
+                    ? Center(
+                        child: Text(
+                          team.name.isNotEmpty
+                              ? team.name[0].toUpperCase()
+                              : '?',
+                          style: AppTextStyles.body.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
               Text(team.name, style: AppTextStyles.body),
@@ -47,9 +67,7 @@ class TeamCard extends StatelessWidget {
                 ),
                 child: Text(
                   '${team.memberCount} members',
-                  style: AppTextStyles.date.copyWith(
-                    color: const Color.fromARGB(221, 52, 52, 52),
-                  ),
+                  style: AppTextStyles.date.copyWith(color: AppColors.textDark),
                 ),
               ),
             ],
@@ -64,7 +82,7 @@ class TeamCard extends StatelessWidget {
               itemCount: team.meetings.length,
               itemBuilder: (context, index) => MeetingRow(
                 title: team.meetings[index].title,
-                time: team.meetings[index].time,
+                time: team.meetings[index].formattedTime,
                 platform: team.meetings[index].platform,
                 showBadge: team.meetings[index].showBadge,
               ),

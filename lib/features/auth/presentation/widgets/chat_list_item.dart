@@ -4,12 +4,26 @@ import 'package:hourlink/features/auth/data/models/chat_preview.dart';
 
 class ChatListItem extends StatelessWidget {
   final ChatPreview chat;
+  final String currentUserId;
   final VoidCallback? onTap;
 
-  const ChatListItem({super.key, required this.chat, this.onTap});
+  const ChatListItem({
+    super.key,
+    required this.chat,
+    required this.currentUserId,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // ✅ chatName() retourne le nom de l'autre user pour les DMs
+    final name = chat.chatName(currentUserId);
+
+    // ✅ formattedTime depuis lastMessageAt (DateTime)
+    final time = chat.lastMessageAt != null
+        ? '${chat.lastMessageAt!.hour.toString().padLeft(2, '0')}:${chat.lastMessageAt!.minute.toString().padLeft(2, '0')}'
+        : '';
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -19,14 +33,43 @@ class ChatListItem extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 16),
             child: Row(
               children: [
-                // ── Avatar ───────────────────────────────────────────────
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: AppColors.avatarPlaceholder,
-                    shape: BoxShape.circle,
-                  ),
+                // ── Avatar ────────────────────────────────────────────────
+                // ── Avatar ────────────────────────────────────────────────────
+                Builder(
+                  builder: (_) {
+                    final otherUser = chat.members
+                        .where((m) => m.id != currentUserId)
+                        .firstOrNull;
+                    final photoUrl = otherUser?.photoUrl ?? '';
+                    final initiale = (otherUser?.name.isNotEmpty == true)
+                        ? otherUser!.name[0].toUpperCase()
+                        : '?';
+
+                    return Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: AppColors.avatarPlaceholder,
+                        shape: BoxShape.circle,
+                        image: photoUrl.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(photoUrl),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: photoUrl.isEmpty
+                          ? Center(
+                              child: Text(
+                                initiale,
+                                style: AppTextStyles.body.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            )
+                          : null,
+                    );
+                  },
                 ),
                 const SizedBox(width: 14),
 
@@ -36,7 +79,7 @@ class ChatListItem extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        chat.user.name,
+                        name,
                         style: AppTextStyles.body.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -44,7 +87,7 @@ class ChatListItem extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         chat.lastMessage,
-                        style: AppTextStyles.date,
+                        style: AppTextStyles.caption,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -54,12 +97,12 @@ class ChatListItem extends StatelessWidget {
 
                 const SizedBox(width: 8),
 
-                // ── Time ─────────────────────────────────────────────────
-                Text(chat.time, style: AppTextStyles.date),
+                // ── Time ──────────────────────────────────────────────────
+                Text(time, style: AppTextStyles.caption),
               ],
             ),
           ),
-          const Divider(
+          Divider(
             height: 1,
             color: AppColors.divider,
             indent: 25,

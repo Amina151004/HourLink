@@ -1,103 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
-import 'package:hourlink/features/auth/data/models/meeting.dart';
 import 'package:hourlink/features/auth/data/models/teams.dart';
-import 'package:hourlink/features/auth/data/models/user.dart';
+import 'package:hourlink/features/auth/data/models/app_user.dart';
 import 'package:hourlink/features/auth/presentation/pages/create_meeting_screen.dart';
 import 'package:hourlink/features/auth/presentation/widgets/stats_card.dart';
 import 'package:hourlink/features/auth/presentation/widgets/team_card.dart';
+import 'package:hourlink/features/auth/data/services/team_service.dart'; // ✅ import
+import 'package:firebase_auth/firebase_auth.dart'; // ✅ import
 
 class MyDashboard extends StatefulWidget {
-  const MyDashboard({super.key});
+  final AppUser currentUser;
+  const MyDashboard({super.key, required this.currentUser});
 
   @override
   State<MyDashboard> createState() => _MyDashboardState();
 }
 
 class _MyDashboardState extends State<MyDashboard> {
-  final List<Team> teams = [
-    Team(
-      name: 'Team1',
-      memberCount: 5,
-      meetings: [
-        Meeting(
-          title: 'Daily setup',
-          time: 'Today at 9:00pm',
-          platform: 'zoom',
-          showBadge: true,
-        ),
-        Meeting(title: 'Review progress', time: 'Today at 11:00pm'),
-        Meeting(
-          title: 'Sprint planning',
-          time: 'Today at 2:00pm',
-          platform: 'zoom',
-          showBadge: true,
-        ),
-      ],
-      ownerId: '1', // ✅ owned by current user → counted as active
-    ),
-    Team(
-      name: 'Team2',
-      memberCount: 10,
-      meetings: [
-        Meeting(
-          title: 'Daily setup',
-          time: 'Today at 12:00pm',
-          platform: 'zoom',
-          showBadge: true,
-        ),
-        Meeting(title: 'Review progress', time: 'Today at 1:00am'),
-      ],
-      members: [
-        User(
-          id: '1', // ✅ current user is a MEMBER here (not owner) → still active
-          name: 'Amina',
-          title: 'Member',
-          location: 'Tlemcen, Algeria',
-          description: '',
-          email: 'amina@gmail.com',
-          phone: '',
-        ),
-      ],
-      ownerId: '2', // owned by someone else
-    ),
-    Team(
-      name: 'Team3',
-      memberCount: 7,
-      meetings: [
-        Meeting(title: 'Kick-off', time: 'Today at 10:00am', platform: 'meet'),
-        Meeting(title: 'Retrospective', time: 'Today at 3:00pm'),
-        Meeting(
-          title: 'Design review',
-          time: 'Today at 5:00pm',
-          platform: 'zoom',
-          showBadge: true,
-        ),
-        Meeting(title: 'Sync up', time: 'Today at 6:00pm'),
-      ],
-      ownerId: '3', // ✅ not owned by current user, no members list → NOT active
-    ),
-  ];
+  final TeamService _teamService = TeamService(); // ✅ service instance
+  final List<Team> teams = []; // keep as local state
 
-  // ✅ remplace par l'uid réel de FirebaseAuth.instance.currentUser!.uid
-  static const String _currentUserId = '1';
+  // ✅ get current user id from Firebase Auth
+  String get _currentUserId => FirebaseAuth.instance.currentUser!.uid;
 
-  // ✅ teams où l'utilisateur est owner OU membre
+  // ✅ teams where user is owner OR member
   List<Team> get _activeTeams =>
       teams.where((team) => team.isActiveFor(_currentUserId)).toList();
 
-  // ✅ nombre de teams actives pour l'utilisateur
+  // ✅ number of active teams for the user
   int _getActiveTeamsCount() => _activeTeams.length;
 
-  // ✅ total des meetings de toutes les teams actives de l'utilisateur
-  // Note: tous les meetings mock contiennent "Today" dans `time` (String),
-  // donc on compte tous les meetings des teams actives — à affiner plus tard
-  // avec un vrai DateTime sur Meeting pour filtrer le jour exact.
+  // ✅ total meetings from all active teams
   int _getTodayMeetingsCount() {
     return _activeTeams.fold<int>(
       0,
       (total, team) => total + team.meetings.length,
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTeams(); // ✅ load teams when screen initializes
+  }
+
+  // ✅ method to load teams from service
+  void _loadTeams() {
+    _teamService.getUserTeamsStream().listen((loadedTeams) {
+      if (mounted) {
+        setState(() {
+          teams.clear();
+          teams.addAll(loadedTeams);
+        });
+      }
+    });
   }
 
   @override
@@ -121,18 +77,23 @@ class _MyDashboardState extends State<MyDashboard> {
                     children: [
                       Text('Sunday, 25 June 2024', style: AppTextStyles.date),
                       const SizedBox(height: 10),
-                      Text('Hi, Amina👋!', style: AppTextStyles.subheading),
+                      Text(
+                        'Hi, ${widget.currentUser.name}👋!',
+                        style: AppTextStyles.subheading,
+                      ), // ✅ use currentUser from widget
                     ],
                   ),
                   const Spacer(),
-                  // ✅ navigue vers CreateMeetingScreen
                   IconButton(
-                    icon: const Icon(Icons.add),
+                    icon: Icon(Icons.add, color: AppColors.textDark),
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => CreateMeetingScreen(allTeams: teams),
+                          builder: (_) => CreateMeetingScreen(
+                            allTeams: teams,
+                            currentUserId: widget.currentUser.id,
+                          ),
                         ),
                       );
                     },
@@ -143,7 +104,7 @@ class _MyDashboardState extends State<MyDashboard> {
 
             const SizedBox(height: 30),
 
-            // ── Stat cards ✅ valeurs calculées dynamiquement ──────────────
+            // ── Stat cards ──────────────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -173,13 +134,25 @@ class _MyDashboardState extends State<MyDashboard> {
 
             const SizedBox(height: 20),
 
-            // ── Team cards ✅ seulement les teams actives de l'utilisateur ──
-            ..._activeTeams.map(
-              (team) => Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: Center(child: TeamCard(team: team)),
+            // ── Team cards ──────────────────────────────────────────────
+            if (_activeTeams.isEmpty) // ✅ handle empty state
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Text(
+                    'No active teams. Create or join a team to get started!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              )
+            else
+              ..._activeTeams.map(
+                (team) => Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Center(child: TeamCard(team: team)),
+                ),
               ),
-            ),
             const SizedBox(height: 30),
           ],
         ),

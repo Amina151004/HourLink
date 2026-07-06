@@ -50,7 +50,7 @@ class MeetingRow extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.videocam_outlined,
                               size: 14,
                               color: AppColors.textGrey,
@@ -75,7 +75,7 @@ class MeetingRow extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.blue.withOpacity(0.15),
+                      color: AppColors.blue.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -89,7 +89,7 @@ class MeetingRow extends StatelessWidget {
             ],
           ),
         ),
-        const Divider(color: AppColors.divider),
+        Divider(color: AppColors.divider),
       ],
     );
   }

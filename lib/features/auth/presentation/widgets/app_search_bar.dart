@@ -77,24 +77,15 @@ class AppSearchBar extends StatelessWidget {
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(radius),
-                  borderSide: const BorderSide(
-                    color: AppColors.textDark,
-                    width: 0.5,
-                  ),
+                  borderSide: BorderSide(color: AppColors.textDark, width: 0.5),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(radius),
-                  borderSide: const BorderSide(
-                    color: AppColors.textDark,
-                    width: 0.5,
-                  ),
+                  borderSide: BorderSide(color: AppColors.textDark, width: 0.5),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(radius),
-                  borderSide: const BorderSide(
-                    color: AppColors.textDark,
-                    width: 0.5,
-                  ),
+                  borderSide: BorderSide(color: AppColors.textDark, width: 0.5),
                 ),
               ),
             ),

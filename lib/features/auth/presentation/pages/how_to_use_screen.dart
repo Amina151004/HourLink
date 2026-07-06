@@ -60,7 +60,6 @@ class _HowToUseScreenState extends State<HowToUseScreen> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     final bool isLastPage = _currentPage == _slides.length - 1;
 
     return Scaffold(
@@ -112,7 +111,7 @@ class _HowToUseScreenState extends State<HowToUseScreen> {
                   decoration: BoxDecoration(
                     color: _currentPage == index
                         ? AppColors.primary
-                        : AppColors.textGrey.withOpacity(0.35),
+                        : AppColors.textGrey.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),

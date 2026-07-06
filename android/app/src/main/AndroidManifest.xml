@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="hourlink01"
+        android:label="Hourlink"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -30,6 +30,9 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <meta-data
+    android:name="com.google.firebase.messaging.default_notification_channel_id"
+    android:value="hourlink_channel" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
@@ -42,4 +45,8 @@
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>
+    <queries>
+    <package android:name="com.google.android.calendar" />
+</queries>
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
 </manifest>

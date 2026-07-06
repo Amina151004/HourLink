@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
 
-/// Shared shell for profile screens: back button + top-right action icon
-/// in the header zone, overlapping avatar, and the white rounded card
-/// containing [body]. Used by both [UserProfileScreen] and [MyProfileScreen].
 class ProfileScreenShell extends StatelessWidget {
   final IconData headerRightIcon;
   final VoidCallback onHeaderRightTap;
   final Widget body;
+  final String? avatarUrl; // ← ajouté
+  final String? avatarName; // ← ajouté pour l'initiale en fallback
 
   const ProfileScreenShell({
     super.key,
     required this.headerRightIcon,
     required this.onHeaderRightTap,
     required this.body,
+    this.avatarUrl,
+    this.avatarName,
   });
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final initiale = (avatarName?.isNotEmpty == true)
+        ? avatarName![0].toUpperCase()
+        : '?';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -39,11 +43,19 @@ class ProfileScreenShell extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.chevron_left, size: 28),
+                            icon: Icon(
+                              Icons.chevron_left,
+                              color: AppColors.textDark,
+                              size: 28,
+                            ),
                             onPressed: () => Navigator.pop(context),
                           ),
                           IconButton(
-                            icon: Icon(headerRightIcon, size: 24),
+                            icon: Icon(
+                              headerRightIcon,
+                              color: AppColors.textDark,
+                              size: 24,
+                            ),
                             onPressed: onHeaderRightTap,
                           ),
                         ],
@@ -73,18 +85,34 @@ class ProfileScreenShell extends StatelessWidget {
 
           // ── Avatar overlapping ─────────────────────────────────────────
           Positioned(
-            top: 140,
+            top: 147,
             left: 0,
             right: 0,
             child: Center(
               child: Container(
-                width: screenWidth * 0.3,
-                height: screenWidth * 0.3,
+                width: screenWidth * 0.34,
+                height: screenWidth * 0.34,
                 decoration: BoxDecoration(
                   color: AppColors.avatarPlaceholder,
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.white, width: 4),
+                  image: (avatarUrl?.isNotEmpty == true)
+                      ? DecorationImage(
+                          image: NetworkImage(avatarUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
+                child: (avatarUrl?.isEmpty ?? true)
+                    ? Center(
+                        child: Text(
+                          initiale,
+                          style: AppTextStyles.subheading.copyWith(
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                      )
+                    : null,
               ),
             ),
           ),

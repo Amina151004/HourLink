@@ -20,13 +20,33 @@ class TeamListItem extends StatelessWidget {
             child: Row(
               children: [
                 // ── Avatar ───────────────────────────────────────────────
+                // ── Avatar ───────────────────────────────────────────────────────
                 Container(
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: AppColors.avatarPlaceholder,
+                    color: AppColors.avatarPast,
                     shape: BoxShape.circle,
+                    image: team.photoUrl != null && team.photoUrl!.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(team.photoUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
+                  child: team.photoUrl == null || team.photoUrl!.isEmpty
+                      ? Center(
+                          child: Text(
+                            team.name.isNotEmpty
+                                ? team.name[0].toUpperCase()
+                                : '?',
+                            style: AppTextStyles.body.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 14),
 
@@ -43,7 +63,7 @@ class TeamListItem extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        team.bio ?? 'team bio ....',
+                        team.bio,
                         style: AppTextStyles.date,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -66,7 +86,7 @@ class TeamListItem extends StatelessWidget {
                   child: Text(
                     '${team.memberCount} members',
                     style: AppTextStyles.date.copyWith(
-                      color: const Color.fromARGB(221, 52, 52, 52),
+                      color: AppColors.textDark,
                     ),
                   ),
                 ),
@@ -75,12 +95,7 @@ class TeamListItem extends StatelessWidget {
           ),
         ),
         // ── Divider ───────────────────────────────────────────────────────
-        const Divider(
-          color: AppColors.divider,
-          height: 1,
-          indent: 25,
-          endIndent: 25,
-        ),
+        Divider(color: AppColors.divider, height: 1, indent: 25, endIndent: 25),
       ],
     );
   }

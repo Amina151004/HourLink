@@ -3,8 +3,6 @@ import 'package:hourlink/core/theme/appTheme.dart';
 import 'package:hourlink/features/auth/data/models/teams.dart';
 import 'package:hourlink/features/auth/presentation/widgets/meeting_row.dart';
 
-/// Full, scrollable list of every meeting for a given team.
-/// Reached via the "See all meetings" link on the team profile.
 class AllTeamMeetingsScreen extends StatelessWidget {
   final Team team;
 
@@ -43,7 +41,26 @@ class AllTeamMeetingsScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.avatarPlaceholder,
                     shape: BoxShape.circle,
+                    image: team.photoUrl != null && team.photoUrl!.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(team.photoUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
+                  child: team.photoUrl == null || team.photoUrl!.isEmpty
+                      ? Center(
+                          child: Text(
+                            team.name.isNotEmpty
+                                ? team.name[0].toUpperCase()
+                                : '?',
+                            style: AppTextStyles.body.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
               ],
             ),
@@ -71,7 +88,7 @@ class AllTeamMeetingsScreen extends StatelessWidget {
                       final meeting = team.meetings[index];
                       return MeetingRow(
                         title: meeting.title,
-                        time: meeting.time,
+                        time: meeting.formattedTime,
                         platform: meeting.platform,
                         showBadge: meeting.showBadge,
                       );

@@ -11,7 +11,7 @@ class TeamMoreOptionsMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, size: 24, color: AppColors.textDark),
+      icon: Icon(Icons.more_vert, size: 24, color: AppColors.textDark),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       color: AppColors.white,
       onSelected: (value) {

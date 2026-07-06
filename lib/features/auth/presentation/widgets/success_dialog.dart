@@ -47,7 +47,7 @@ class SuccessDialog extends StatelessWidget {
           border: Border.all(color: AppColors.white, width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.12),
+              color: AppColors.primary.withValues(alpha: 0.12),
               blurRadius: 24,
               offset: const Offset(0, 10),
             ),
@@ -63,12 +63,12 @@ class SuccessDialog extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppColors.primary.withOpacity(0.35),
+                  color: AppColors.primary.withValues(alpha: 0.35),
                   width: 1.5,
                 ),
-                color: AppColors.primary.withOpacity(0.08),
+                color: AppColors.primary.withValues(alpha: 0.08),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.check_rounded,
                 color: AppColors.primary,
                 size: 28,

@@ -42,7 +42,7 @@ class ChatInputBar extends StatelessWidget {
                   hintText: 'Send a message',
                   hintStyle: AppTextStyles.body.copyWith(
                     fontSize: 12,
-                    color: AppColors.textDark.withOpacity(0.5),
+                    color: AppColors.textDark.withValues(alpha: 0.5),
                   ),
                   border: InputBorder.none,
                 ),
@@ -52,7 +52,7 @@ class ChatInputBar extends StatelessWidget {
             // ── Send button ─────────────────────────────────────────────
             GestureDetector(
               onTap: onSend,
-              child: const Icon(
+              child: Icon(
                 Icons.send_rounded,
                 color: AppColors.textDark,
                 size: 22,
