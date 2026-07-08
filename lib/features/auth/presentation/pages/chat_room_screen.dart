@@ -239,12 +239,6 @@ class _ChatHeader extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  Text(
-                    'Online',
-                    style: AppTextStyles.date.copyWith(
-                      color: AppColors.textGrey,
-                    ),
-                  ),
                 ],
               ),
             ),

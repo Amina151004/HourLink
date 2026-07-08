@@ -1,4 +1,5 @@
 // ignore: file_names
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
@@ -23,6 +24,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
   final _formKey = GlobalKey<FormState>();
   final _teamService = TeamService();
   final _userService = UserService();
+  Timer? _debounce;
 
   File? _pickedImage;
   bool _isSubmitting = false;
@@ -32,6 +34,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _nameController.dispose();
     _descController.dispose();
     _searchController.dispose();
@@ -49,21 +52,29 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
     }
   }
 
-  Future<void> _searchUsers(String query) async {
+  void _searchUsers(String query) {
+    _debounce?.cancel();
+
     if (query.trim().isEmpty) {
       setState(() => _searchResults = []);
       return;
     }
+
+    // show loading immediately so UI feels responsive
     setState(() => _isSearching = true);
-    final results = await _userService.searchUsers(query);
-    if (mounted) {
-      setState(() {
-        _searchResults = results
-            .where((u) => !_selectedMembers.any((m) => m.id == u.id))
-            .toList();
-        _isSearching = false;
-      });
-    }
+
+    // wait 500ms after user stops typing
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      final results = await _userService.searchUsers(query);
+      if (mounted) {
+        setState(() {
+          _searchResults = results
+              .where((u) => !_selectedMembers.any((m) => m.id == u.id))
+              .toList();
+          _isSearching = false;
+        });
+      }
+    });
   }
 
   void _addMember(AppUser user) {

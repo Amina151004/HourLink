@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
 import 'package:hourlink/features/auth/presentation/pages/how_to_use_screen.dart';
 import 'package:hourlink/features/auth/presentation/pages/login_screen.dart';
@@ -11,6 +12,7 @@ import 'package:hourlink/features/auth/data/services/auth_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(
     options:
         DefaultFirebaseOptions.currentPlatform, // 👈 from firebase_options.dart

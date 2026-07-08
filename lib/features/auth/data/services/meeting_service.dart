@@ -1,12 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hourlink/features/auth/data/models/meeting.dart';
+import 'package:hourlink/features/auth/data/services/auth_guard.dart';
+import 'package:hourlink/features/auth/data/services/team_service.dart';
 
 class MeetingService {
   final _firestore = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
+  final _teamService = TeamService(); // 👈 add this
 
-  String get _uid => _auth.currentUser!.uid;
+  String get _uid => AuthGuard.uid;
 
   CollectionReference _meetingsRef(String teamId) =>
       _firestore.collection('teams').doc(teamId).collection('meetings');
@@ -18,14 +19,21 @@ class MeetingService {
     required DateTime scheduledAt,
     String? platform,
   }) async {
+    // validate before hitting Firestore
+    if (title.trim().isEmpty) throw Exception('Meeting title cannot be empty');
+
     final ref = await _meetingsRef(teamId).add({
-      'title': title,
+      'title': title.trim(),
       'platform': platform,
       'scheduledAt': Timestamp.fromDate(scheduledAt),
       'status': 'coming',
       'createdBy': _uid,
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    // 👈 tell TeamService to re-fetch meetings next time
+    _teamService.invalidateMeetingsCache(teamId);
+
     final doc = await ref.get();
     return Meeting.fromFirestore(doc);
   }
@@ -38,7 +46,8 @@ class MeetingService {
         .map((snap) => snap.docs.map((d) => Meeting.fromFirestore(d)).toList());
   }
 
-  // ── 3. READ — all meetings for current user across all teams ───────────
+  // ── 3. READ — today's meetings across all teams ────────────────────────
+  // ── 3. READ — today's meetings across all teams ────────────────────────
   Future<List<Meeting>> getTodayMeetings(List<String> teamIds) async {
     if (teamIds.isEmpty) return [];
 
@@ -46,22 +55,24 @@ class MeetingService {
     final startOfDay = DateTime(now.year, now.month, now.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
-    final results = <Meeting>[];
+    // 👈 all queries fire at the same time instead of one by one
+    final results = await Future.wait(
+      teamIds.map(
+        (teamId) => _meetingsRef(teamId)
+            .where(
+              'scheduledAt',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+            )
+            .where('scheduledAt', isLessThan: Timestamp.fromDate(endOfDay))
+            .orderBy('scheduledAt')
+            .get(),
+      ),
+    );
 
-    for (final teamId in teamIds) {
-      final snap = await _meetingsRef(teamId)
-          .where(
-            'scheduledAt',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
-          )
-          .where('scheduledAt', isLessThan: Timestamp.fromDate(endOfDay))
-          .orderBy('scheduledAt')
-          .get();
-
-      results.addAll(snap.docs.map((d) => Meeting.fromFirestore(d)));
-    }
-
-    return results;
+    // flatten the list of lists into a single list
+    return results
+        .expand((snap) => snap.docs.map((d) => Meeting.fromFirestore(d)))
+        .toList();
   }
 
   // ── 4. UPDATE meeting status ───────────────────────────────────────────
@@ -70,6 +81,10 @@ class MeetingService {
     required String meetingId,
     required String status,
   }) async {
+    const validStatuses = ['coming', 'done', 'cancelled'];
+    if (!validStatuses.contains(status)) {
+      throw Exception('Invalid status: $status');
+    }
     await _meetingsRef(teamId).doc(meetingId).update({'status': status});
   }
 
@@ -79,5 +94,8 @@ class MeetingService {
     required String meetingId,
   }) async {
     await _meetingsRef(teamId).doc(meetingId).delete();
+
+    // 👈 tell TeamService to re-fetch meetings next time
+    _teamService.invalidateMeetingsCache(teamId);
   }
 }

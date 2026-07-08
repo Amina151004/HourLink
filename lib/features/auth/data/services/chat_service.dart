@@ -1,15 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hourlink/features/auth/data/models/app_user.dart';
 import 'package:hourlink/features/auth/data/models/chat_preview.dart';
 import 'package:hourlink/features/auth/data/models/message.dart';
+import 'package:hourlink/features/auth/data/services/auth_guard.dart';
 
 class ChatService {
   final _firestore = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
 
-  String get _uid => _auth.currentUser!.uid;
+  String get _uid => AuthGuard.uid;
   CollectionReference get _chats => _firestore.collection('chats');
 
   // ── 1. GET or CREATE a direct message chat between 2 users ────────────
@@ -33,7 +32,7 @@ class ChatService {
           'isGroup': false,
           'memberIds': ids,
           'lastMessage': '',
-          'lastMessageAt': FieldValue.serverTimestamp(),
+          'lastMessageAt': Timestamp.now(),
         });
         debugPrint('chat created successfully');
       } catch (e) {
@@ -67,7 +66,7 @@ class ChatService {
         .doc(chatId)
         .collection('messages')
         .orderBy('sentAt', descending: false)
-        .snapshots()
+        .snapshots(includeMetadataChanges: true) //
         .map((snap) => snap.docs.map((d) => Message.fromFirestore(d)).toList());
   }
 
@@ -76,18 +75,23 @@ class ChatService {
     required String chatId,
     required String text,
   }) async {
+    // ── Validate before hitting Firestore ──────────────────────────────────
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) throw Exception('Message cannot be empty');
+    if (trimmed.length > 2000) throw Exception('Message too long (2000 chars)');
+
     final batch = _firestore.batch();
 
     final msgRef = _chats.doc(chatId).collection('messages').doc();
     batch.set(msgRef, {
-      'text': text,
-      'senderId': _uid,
+      'text': trimmed, // 👈 store trimmed not raw text
+      'senderId': AuthGuard.uid, // 👈 use AuthGuard instead of _uid
       'sentAt': FieldValue.serverTimestamp(),
-      'seenBy': [_uid],
+      'seenBy': [AuthGuard.uid],
     });
 
     batch.update(_chats.doc(chatId), {
-      'lastMessage': text,
+      'lastMessage': trimmed, // 👈 trimmed here too
       'lastMessageAt': FieldValue.serverTimestamp(),
     });
 

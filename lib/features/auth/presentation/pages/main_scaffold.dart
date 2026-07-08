@@ -18,17 +18,8 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
+  late List<Widget> _pages; // 👈 late — built once in initState
 
-  @override
-  void initState() {
-    super.initState();
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: [SystemUiOverlay.top],
-    );
-  }
-
-  // ── Convert Firebase User → your AppUser model ────────────────────────
   AppUser get _currentAppUser {
     final firebaseUser = FirebaseAuth.instance.currentUser;
     return AppUser(
@@ -40,21 +31,32 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    // ── Build pages here so _currentAppUser is accessible ─────────────
-    final List<Widget> pages = [
-      MyDashboard(currentUser: _currentAppUser),
-      MyTeamsScreen(currentUser: _currentAppUser),
-      ChatsScreen(currentUserId: _currentAppUser.id),
-      MyProfileScreen(user: _currentAppUser),
-    ];
+  void initState() {
+    super.initState();
 
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [SystemUiOverlay.top],
+    );
+
+    // 👈 build pages ONCE — never rebuilt on nav taps
+    final user = _currentAppUser;
+    _pages = [
+      MyDashboard(currentUser: user),
+      MyTeamsScreen(currentUser: user),
+      ChatsScreen(currentUserId: user.id),
+      MyProfileScreen(user: user),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // ── Active page ───────────────────────────────────────────────
-          pages[_currentIndex],
+          // 👈 keeps all pages alive — only visibility changes on tap
+          IndexedStack(index: _currentIndex, children: _pages),
 
           // ── Floating bottom nav ───────────────────────────────────────
           Positioned(

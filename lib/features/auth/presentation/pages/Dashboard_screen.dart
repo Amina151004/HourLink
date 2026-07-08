@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:hourlink/core/theme/appTheme.dart';
 import 'package:hourlink/features/auth/data/models/teams.dart';
@@ -7,6 +10,7 @@ import 'package:hourlink/features/auth/presentation/widgets/stats_card.dart';
 import 'package:hourlink/features/auth/presentation/widgets/team_card.dart';
 import 'package:hourlink/features/auth/data/services/team_service.dart'; // ✅ import
 import 'package:firebase_auth/firebase_auth.dart'; // ✅ import
+// add this import at the top
 
 class MyDashboard extends StatefulWidget {
   final AppUser currentUser;
@@ -19,6 +23,7 @@ class MyDashboard extends StatefulWidget {
 class _MyDashboardState extends State<MyDashboard> {
   final TeamService _teamService = TeamService(); // ✅ service instance
   final List<Team> teams = []; // keep as local state
+  StreamSubscription<List<Team>>? _teamsSubscription;
 
   // ✅ get current user id from Firebase Auth
   String get _currentUserId => FirebaseAuth.instance.currentUser!.uid;
@@ -44,9 +49,17 @@ class _MyDashboardState extends State<MyDashboard> {
     _loadTeams(); // ✅ load teams when screen initializes
   }
 
+  @override
+  void dispose() {
+    _teamsSubscription?.cancel(); // 👈 close the tap
+    super.dispose();
+  }
+
   // ✅ method to load teams from service
   void _loadTeams() {
-    _teamService.getUserTeamsStream().listen((loadedTeams) {
+    _teamsSubscription = _teamService.getUserTeamsStream().listen((
+      loadedTeams,
+    ) {
       if (mounted) {
         setState(() {
           teams.clear();
@@ -75,7 +88,10 @@ class _MyDashboardState extends State<MyDashboard> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Sunday, 25 June 2024', style: AppTextStyles.date),
+                      Text(
+                        DateFormat('EEEE, d MMMM yyyy').format(DateTime.now()),
+                        style: AppTextStyles.date,
+                      ),
                       const SizedBox(height: 10),
                       Text(
                         'Hi, ${widget.currentUser.name}👋!',

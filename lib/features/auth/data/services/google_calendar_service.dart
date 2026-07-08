@@ -19,9 +19,15 @@ class GoogleCalendarService {
   // ─────────────────────────────────────────────
 
   /// Initialise l'API Calendar en utilisant la session Google existante.
-  /// À appeler une fois après la connexion dans AuthService.
-  Future<bool> init() async {
+  /// À appeler une fois après la connexion dans AuthService, et aussi
+  /// automatiquement en cas d'échec d'authentification (token expiré).
+  Future<bool> init({bool forceRefresh = false}) async {
     try {
+      if (forceRefresh) {
+        // Force GoogleSignIn to mint a fresh authenticatedClient rather than
+        // reusing whatever cached token it might otherwise hand back.
+        _calendarApi = null;
+      }
       final authClient = await _authService.googleSignIn.authenticatedClient();
       debugPrint('[FreeBusy] authClient: $authClient');
       debugPrint(
@@ -46,6 +52,32 @@ class GoogleCalendarService {
   void dispose() => _calendarApi = null;
 
   // ─────────────────────────────────────────────
+  // RETRY WRAPPER — handles expired-token 401s transparently
+  // ─────────────────────────────────────────────
+
+  /// Runs [action] against `_calendarApi`. If it fails with an auth error
+  /// (expired/invalid token), forces a fresh client via `init(forceRefresh:
+  /// true)` and retries exactly once. Any other error, or a second failure,
+  /// propagates to the caller.
+  Future<T> _withAuthRetry<T>(Future<T> Function() action) async {
+    if (!await _ensureReady()) {
+      throw StateError('GoogleCalendarService not ready: no auth client');
+    }
+    try {
+      return await action();
+    } on gcal.DetailedApiRequestError catch (e) {
+      final isAuthError = e.status == 401 || e.status == 403;
+      if (!isAuthError) rethrow;
+      debugPrint(
+        '[GoogleCalendarService] Auth error (${e.status}), refreshing token and retrying…',
+      );
+      final refreshed = await init(forceRefresh: true);
+      if (!refreshed) rethrow;
+      return await action();
+    }
+  }
+
+  // ─────────────────────────────────────────────
   // CRÉER UN ÉVÉNEMENT
   // ─────────────────────────────────────────────
 
@@ -57,26 +89,30 @@ class GoogleCalendarService {
     List<String> attendeeEmails = const [],
     String? meetingId,
   }) async {
-    if (!await _ensureReady()) return null;
     try {
-      final event = gcal.Event(
-        summary: title,
-        description: meetingId != null
-            ? '$description\n\n[HourLink Meeting ID: $meetingId]'
-            : description,
-        start: gcal.EventDateTime(dateTime: start, timeZone: 'Africa/Algiers'),
-        end: gcal.EventDateTime(dateTime: end, timeZone: 'Africa/Algiers'),
-        attendees: attendeeEmails
-            .map((email) => gcal.EventAttendee(email: email))
-            .toList(),
-        guestsCanModify: false,
-        guestsCanInviteOthers: false,
-      );
-      final created = await _calendarApi!.events.insert(
-        event,
-        'primary',
-        sendUpdates: 'all',
-      );
+      final created = await _withAuthRetry(() {
+        final event = gcal.Event(
+          summary: title,
+          description: meetingId != null
+              ? '$description\n\n[HourLink Meeting ID: $meetingId]'
+              : description,
+          start: gcal.EventDateTime(
+            dateTime: start,
+            timeZone: 'Africa/Algiers',
+          ),
+          end: gcal.EventDateTime(dateTime: end, timeZone: 'Africa/Algiers'),
+          attendees: attendeeEmails
+              .map((email) => gcal.EventAttendee(email: email))
+              .toList(),
+          guestsCanModify: false,
+          guestsCanInviteOthers: false,
+        );
+        return _calendarApi!.events.insert(
+          event,
+          'primary',
+          sendUpdates: 'all',
+        );
+      });
       debugPrint('[GoogleCalendarService] Événement créé: ${created.id}');
       return created.id;
     } catch (e) {
@@ -93,16 +129,17 @@ class GoogleCalendarService {
     int maxResults = 20,
     int daysAhead = 30,
   }) async {
-    if (!await _ensureReady()) return [];
     try {
       final now = DateTime.now();
-      final result = await _calendarApi!.events.list(
-        'primary',
-        timeMin: now,
-        timeMax: now.add(Duration(days: daysAhead)),
-        maxResults: maxResults,
-        singleEvents: true,
-        orderBy: 'startTime',
+      final result = await _withAuthRetry(
+        () => _calendarApi!.events.list(
+          'primary',
+          timeMin: now,
+          timeMax: now.add(Duration(days: daysAhead)),
+          maxResults: maxResults,
+          singleEvents: true,
+          orderBy: 'startTime',
+        ),
       );
       return (result.items ?? [])
           .map((e) => CalendarEvent.fromGoogleEvent(e))
@@ -123,18 +160,17 @@ class GoogleCalendarService {
     required DateTime end,
   }) async {
     debugPrint('[FreeBusy] getBusySlots called, emails: $emails');
-    final ready = await _ensureReady();
-    debugPrint('[FreeBusy] ensureReady result: $ready');
-    if (!ready) return {};
-
     try {
-      final request = gcal.FreeBusyRequest(
-        timeMin: start,
-        timeMax: end,
-        timeZone: 'Africa/Algiers',
-        items: emails.map((e) => gcal.FreeBusyRequestItem(id: e)).toList(),
-      );
-      final response = await _calendarApi!.freebusy.query(request);
+      final response = await _withAuthRetry(() {
+        final request = gcal.FreeBusyRequest(
+          timeMin: start,
+          timeMax: end,
+          timeZone: 'Africa/Algiers',
+          items: emails.map((e) => gcal.FreeBusyRequestItem(id: e)).toList(),
+        );
+        return _calendarApi!.freebusy.query(request);
+      });
+
       final Map<String, List<TimeSlot>> busyMap = {};
       response.calendars?.forEach((email, calInfo) {
         // 🔍 DEBUG — tells you WHY a calendar came back empty
@@ -170,28 +206,29 @@ class GoogleCalendarService {
     String? description,
     List<String>? attendeeEmails,
   }) async {
-    if (!await _ensureReady()) return false;
     try {
-      final existing = await _calendarApi!.events.get('primary', eventId);
-      final updated = gcal.Event(
-        summary: title ?? existing.summary,
-        description: description ?? existing.description,
-        start: start != null
-            ? gcal.EventDateTime(dateTime: start, timeZone: 'Africa/Algiers')
-            : existing.start,
-        end: end != null
-            ? gcal.EventDateTime(dateTime: end, timeZone: 'Africa/Algiers')
-            : existing.end,
-        attendees: attendeeEmails != null
-            ? attendeeEmails.map((e) => gcal.EventAttendee(email: e)).toList()
-            : existing.attendees,
-      );
-      await _calendarApi!.events.update(
-        updated,
-        'primary',
-        eventId,
-        sendUpdates: 'all',
-      );
+      await _withAuthRetry(() async {
+        final existing = await _calendarApi!.events.get('primary', eventId);
+        final updated = gcal.Event(
+          summary: title ?? existing.summary,
+          description: description ?? existing.description,
+          start: start != null
+              ? gcal.EventDateTime(dateTime: start, timeZone: 'Africa/Algiers')
+              : existing.start,
+          end: end != null
+              ? gcal.EventDateTime(dateTime: end, timeZone: 'Africa/Algiers')
+              : existing.end,
+          attendees: attendeeEmails != null
+              ? attendeeEmails.map((e) => gcal.EventAttendee(email: e)).toList()
+              : existing.attendees,
+        );
+        return _calendarApi!.events.update(
+          updated,
+          'primary',
+          eventId,
+          sendUpdates: 'all',
+        );
+      });
       return true;
     } catch (e) {
       debugPrint('[GoogleCalendarService] Erreur updateMeetingEvent: $e');
@@ -200,9 +237,10 @@ class GoogleCalendarService {
   }
 
   Future<bool> deleteMeetingEvent(String eventId) async {
-    if (!await _ensureReady()) return false;
     try {
-      await _calendarApi!.events.delete('primary', eventId);
+      await _withAuthRetry(
+        () => _calendarApi!.events.delete('primary', eventId),
+      );
       return true;
     } catch (e) {
       debugPrint('[GoogleCalendarService] Erreur deleteMeetingEvent: $e');

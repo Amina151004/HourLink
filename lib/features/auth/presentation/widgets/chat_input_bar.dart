@@ -11,6 +11,8 @@ class ChatInputBar extends StatelessWidget {
     required this.onSend,
   });
 
+  static const int _maxLength = 2000;
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -35,8 +37,16 @@ class ChatInputBar extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: controller,
+                maxLength: _maxLength,
                 style: AppTextStyles.body.copyWith(fontSize: 12),
                 maxLines: null, // multi-line
+                buildCounter:
+                    (
+                      _, { // 👈 hides the "0/2000" counter
+                      required currentLength,
+                      required isFocused,
+                      maxLength,
+                    }) => null,
                 textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
                   hintText: 'Send a message',
@@ -51,7 +61,13 @@ class ChatInputBar extends StatelessWidget {
 
             // ── Send button ─────────────────────────────────────────────
             GestureDetector(
-              onTap: onSend,
+              onTap: () {
+                // 👈 also validate before sending
+                final text = controller.text.trim();
+                if (text.isEmpty) return;
+                if (text.length > _maxLength) return;
+                onSend();
+              },
               child: Icon(
                 Icons.send_rounded,
                 color: AppColors.textDark,

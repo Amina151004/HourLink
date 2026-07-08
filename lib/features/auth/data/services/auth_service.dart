@@ -73,8 +73,6 @@ class AuthService {
 
   // ── Sign out ───────────────────────────────────────────────────────────────
   Future<void> signOut() async {
-    await FirebaseFirestore.instance.terminate();
-    await FirebaseFirestore.instance.clearPersistence();
     await _googleSignIn.signOut();
     await _auth.signOut();
   }

@@ -1,13 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hourlink/features/auth/data/models/app_user.dart';
+import 'package:hourlink/features/auth/data/services/auth_guard.dart';
 
 class UserService {
   final _firestore = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
 
-  String get _uid => _auth.currentUser!.uid;
+  String get _uid => AuthGuard.uid;
   DocumentReference get _userRef => _firestore.collection('users').doc(_uid);
 
   // ── 1. GET current user (one-time) ────────────────────────────────────
@@ -39,7 +37,7 @@ class UserService {
     required String description,
     required String phone,
   }) async {
-    await _userRef.set({
+    await _userRef.update({
       'name': name,
       'title': title,
       'location': location,
@@ -51,25 +49,44 @@ class UserService {
   // ── 5. SEARCH users by name (for adding to team) ───────────────────────
   // ── 5. SEARCH users by name or email ──────────────────────────────────
   Future<List<AppUser>> searchUsers(String query) async {
-    if (query.trim().isEmpty) return [];
+    final q = query.trim();
+    if (q.isEmpty) return [];
 
-    final q = query.trim().toLowerCase();
+    final qLower = q.toLowerCase();
 
-    final snap = await _firestore.collection('users').limit(100).get();
+    // ── Search by email prefix server-side ────────────────────────────────
+    final emailSnap = await _firestore
+        .collection('users')
+        .orderBy('email')
+        .startAt([qLower])
+        .endAt(['$qLower\uf8ff'])
+        .limit(20)
+        .get();
 
-    debugPrint('Total users in Firestore: ${snap.docs.length}');
-    for (final doc in snap.docs) {
-      debugPrint('User: ${doc.data()}');
+    // ── Search by name client-side but with small limit ───────────────────
+    final nameSnap = await _firestore
+        .collection('users')
+        .limit(30) // 👈 reduced from 100 to 30
+        .get();
+
+    // combine both results, remove duplicates, exclude self
+    final Map<String, AppUser> merged = {};
+
+    for (final doc in [...emailSnap.docs, ...nameSnap.docs]) {
+      final user = AppUser.fromFirestore(doc);
+      if (user.id != AuthGuard.uid) {
+        merged[user.id] = user;
+      }
     }
 
-    return snap.docs
-        .map((d) => AppUser.fromFirestore(d))
-        .where((u) => u.id != _uid)
+    // filter merged results by query
+    return merged.values
         .where(
           (u) =>
-              u.name.toLowerCase().contains(q) ||
-              u.email.toLowerCase().contains(q),
+              u.name.toLowerCase().contains(qLower) ||
+              u.email.toLowerCase().contains(qLower),
         )
+        .take(20) // 👈 max 20 results shown
         .toList();
   }
 }

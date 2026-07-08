@@ -24,13 +24,18 @@ class _ChatsScreenState extends State<ChatsScreen> {
   final ChatService _chatService = ChatService();
   final UserService _userService = UserService();
 
-  // ── Ajout : stocker la subscription pour la cancel dans dispose()
   StreamSubscription<List<ChatPreview>>? _chatSubscription;
+  Timer? _debounce; // used for new-chat search field
+  Timer? _chatDebounceTimer; // used to debounce raw chat-snapshot bursts
+
+  // 👈 cache resolved users so we don't re-fetch the same uid on every snapshot
+  final Map<String, AppUser> _userCache = {};
 
   String _query = '';
   List<ChatPreview> _chats = [];
   bool _isLoading = true;
   List<AppUser> _searchResults = [];
+  bool _isSearching = false;
 
   List<ChatPreview> get _filtered {
     if (_query.isEmpty) return _chats;
@@ -49,22 +54,51 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   @override
   void dispose() {
-    _chatSubscription?.cancel(); // ← annuler proprement
+    _chatSubscription?.cancel();
+    _debounce?.cancel();
+    _chatDebounceTimer?.cancel();
     _searchController.dispose();
     _newChatController.dispose();
     super.dispose();
   }
 
+  Future<AppUser?> _getCachedUser(String uid) async {
+    if (_userCache.containsKey(uid)) return _userCache[uid];
+    final user = await _userService.getUserById(uid);
+    if (user != null) _userCache[uid] = user;
+    return user;
+  }
+
   void _loadChats() {
-    // ── Correction principale : transformer le stream correctement
-    final enrichedStream = _chatService.getUserChatsStream().asyncMap((
-      chats,
-    ) async {
+    // 👈 debounce raw snapshots so a burst of Firestore updates only
+    // triggers one enrichment pass instead of one per event
+    final rawStream = _chatService.getUserChatsStream();
+    final debouncedController = StreamController<List<ChatPreview>>();
+
+    final rawSub = rawStream.listen(
+      (chats) {
+        _chatDebounceTimer?.cancel();
+        _chatDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+          if (!debouncedController.isClosed) {
+            debouncedController.add(chats);
+          }
+        });
+      },
+      onError: (e) {
+        if (!debouncedController.isClosed) debouncedController.addError(e);
+      },
+      onDone: () {
+        _chatDebounceTimer?.cancel();
+        if (!debouncedController.isClosed) debouncedController.close();
+      },
+    );
+
+    final enrichedStream = debouncedController.stream.asyncMap((chats) async {
       if (chats.isEmpty) return <ChatPreview>[];
       final enriched = await Future.wait(
         chats.map((chat) async {
           final members = await Future.wait(
-            chat.memberIds.map((id) => _userService.getUserById(id)),
+            chat.memberIds.map((id) => _getCachedUser(id)), // 👈 cache-aware
           );
           return chat.copyWith(members: members.whereType<AppUser>().toList());
         }),
@@ -86,6 +120,34 @@ class _ChatsScreenState extends State<ChatsScreen> {
         debugPrint('ChatsStream error: $e');
       },
     );
+
+    // ensure the raw subscription is cleaned up when the enriched one is
+    _chatSubscription!.onDone(() => rawSub.cancel());
+  }
+
+  // 👈 debounced search — replaces the inline onChanged logic
+  void _onNewChatSearchChanged(String val, StateSetter setSheetState) {
+    _debounce?.cancel();
+
+    if (val.trim().isEmpty) {
+      setSheetState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setSheetState(() => _isSearching = true);
+
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      final results = await _userService.searchUsers(val);
+      if (mounted) {
+        setSheetState(() {
+          _searchResults = results;
+          _isSearching = false;
+        });
+      }
+    });
   }
 
   void _showNewChatSheet() {
@@ -146,13 +208,16 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  onChanged: (val) async {
-                    final results = await _userService.searchUsers(val);
-                    setSheetState(() => _searchResults = results);
-                  },
+                  onChanged: (val) =>
+                      _onNewChatSearchChanged(val, setSheetState),
                 ),
                 const SizedBox(height: 12),
-                if (_searchResults.isEmpty &&
+                if (_isSearching)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_searchResults.isEmpty &&
                     _newChatController.text.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -213,7 +278,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                         onTap: () async {
                           Navigator.pop(sheetContext);
 
-                          // ── Correction : montrer un indicateur pendant la création
                           showDialog(
                             context: screenContext,
                             barrierDismissible: false,
@@ -227,7 +291,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 .getOrCreateDirectChat(user);
 
                             if (!screenContext.mounted) return;
-                            Navigator.pop(screenContext); // fermer le loader
+                            Navigator.pop(screenContext);
 
                             Navigator.push(
                               screenContext,
@@ -240,7 +304,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                             );
                           } catch (e) {
                             if (!mounted) return;
-                            Navigator.pop(screenContext); // fermer le loader
+                            Navigator.pop(screenContext);
                             debugPrint('Error creating chat: $e');
                             ScaffoldMessenger.of(screenContext).showSnackBar(
                               SnackBar(
